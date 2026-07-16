@@ -55,8 +55,8 @@ def call_gemini(system_prompt: str, contents: list[dict], max_tokens: int = 2048
     raise RuntimeError(f"Gemini 호출에 실패했어요 ({last_error})")
 
 
-def chat_once(system_prompt: str, user_message: str) -> str:
-    return call_gemini(system_prompt, [{"role": "user", "parts": [{"text": user_message}]}])
+def chat_once(system_prompt: str, user_message: str, max_tokens: int = 2048) -> str:
+    return call_gemini(system_prompt, [{"role": "user", "parts": [{"text": user_message}]}], max_tokens=max_tokens)
 
 
 def chat_with_history(system_prompt: str, history: list[dict], max_tokens: int = 1024) -> str:

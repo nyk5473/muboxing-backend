@@ -137,6 +137,13 @@ class ChatRequest(BaseModel):
     history: list[ChatMessage] = []
 
 
+class ReferenceAnalyzeRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    artist: str = ""
+    composer: str = ""
+    duration: int = Field(default=210, ge=10, le=1200)
+
+
 class ChatResponse(BaseModel):
     reply: str
 
