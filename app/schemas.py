@@ -142,6 +142,7 @@ class ReferenceAnalyzeRequest(BaseModel):
     artist: str = ""
     composer: str = ""
     duration: int = Field(default=210, ge=10, le=1200)
+    video_id: str | None = None
 
 
 class ChatResponse(BaseModel):

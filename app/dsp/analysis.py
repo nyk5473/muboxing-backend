@@ -266,6 +266,25 @@ def _compute_chords(beat_chroma, beat_times, duration):
     return runs
 
 
+def _build_quiz(chord_runs, sections, max_items=8):
+    items = []
+    for label, s, e in chord_runs:
+        if label == 'N':
+            continue
+        sec_label = next((sec['label'] for sec in sections if sec['start'] <= s < sec['end']),
+                          sections[0]['label'] if sections else '')
+        is_minor = label.endswith('m')
+        items.append({
+            's': round(s, 1), 'e': round(e, 1), 'section': sec_label,
+            'chordName': label, 'root': label[:-1] if is_minor else label,
+            'quality': 'min' if is_minor else 'maj',
+        })
+    if len(items) > max_items:
+        step = len(items) / max_items
+        items = [items[int(i * step)] for i in range(max_items)]
+    return items
+
+
 def _harmony_top_bottom(sections, chord_runs):
     top, bottom = [], []
     for sec in sections:
@@ -410,6 +429,7 @@ def analyze_audio(y, sr):
     tracks = _track_segments(y, y_harm, y_perc, sr, sections, chord_runs)
     top, bottom = _harmony_top_bottom(sections, chord_runs)
     note_text = _build_note_text(tempo, sections, freq_map)
+    quiz = _build_quiz(chord_runs, sections)
 
     return {
         'duration': round(float(duration), 2),
@@ -422,4 +442,5 @@ def analyze_audio(y, sr):
             'freq': freq_map,
             'noteText': note_text,
         },
+        'quiz': quiz,
     }
