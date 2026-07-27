@@ -54,6 +54,10 @@ def _download_and_load(video_id: str):
             "quiet": True,
             "retries": 2,
             "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "wav"}],
+            # 클라우드 서버 IP에서는 기본 web 클라이언트로 요청하면 유튜브가 봇으로 의심해
+            # "Please sign in"/429 에러를 낸다. android/ios 클라이언트는 서명 확인(PoToken)
+            # 없이도 스트림 URL을 내려주는 경우가 많아 이 문제를 우회할 수 있다.
+            "extractor_args": {"youtube": {"player_client": ["android", "ios", "web"]}},
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
