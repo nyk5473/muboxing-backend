@@ -55,19 +55,22 @@ def _download_and_load(video_id: str):
             "quiet": True,
             "retries": 2,
             "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "wav"}],
-            # 클라우드 서버 IP에서는 기본 web 클라이언트로 요청하면 유튜브가 봇으로 의심해
-            # "Please sign in"/429 에러를 낸다. android/ios 클라이언트는 서명 확인(PoToken)
-            # 없이도 스트림 URL을 내려주는 경우가 많아 이 문제를 우회할 수 있다.
-            "extractor_args": {"youtube": {"player_client": ["android", "ios", "web"]}},
         }
         cookie_path = None
         if settings.ytdlp_cookies.strip():
             # 로그인된 브라우저 쿠키(Netscape 형식 cookies.txt)를 넣어두면 유튜브가
             # 이 요청을 로그인된 사용자로 인식해 IP 기반 봇 차단을 우회할 확률이 높아진다.
+            # 쿠키는 브라우저 세션이라 web 클라이언트와 짝이 맞아야 하므로, 쿠키가 있을
+            # 때는 android/ios 클라이언트로 우회하지 않는다 (섞으면 "Precondition check
+            # failed" 오류가 난다).
             cookie_path = os.path.join(tmpdir, "cookies.txt")
             with open(cookie_path, "w", encoding="utf-8") as f:
                 f.write(settings.ytdlp_cookies)
             ydl_opts["cookiefile"] = cookie_path
+        else:
+            # 쿠키가 없을 때만 android/ios 클라이언트로 우회를 시도한다 (서명 확인
+            # 없이도 스트림 URL을 내려주는 경우가 있어서).
+            ydl_opts["extractor_args"] = {"youtube": {"player_client": ["android", "ios", "web"]}}
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
