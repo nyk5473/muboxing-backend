@@ -17,6 +17,7 @@ import librosa
 import yt_dlp
 from fastapi import HTTPException
 
+from ..config import settings
 from .analysis import analyze_audio
 
 SR = 22050
@@ -59,6 +60,15 @@ def _download_and_load(video_id: str):
             # 없이도 스트림 URL을 내려주는 경우가 많아 이 문제를 우회할 수 있다.
             "extractor_args": {"youtube": {"player_client": ["android", "ios", "web"]}},
         }
+        cookie_path = None
+        if settings.ytdlp_cookies.strip():
+            # 로그인된 브라우저 쿠키(Netscape 형식 cookies.txt)를 넣어두면 유튜브가
+            # 이 요청을 로그인된 사용자로 인식해 IP 기반 봇 차단을 우회할 확률이 높아진다.
+            cookie_path = os.path.join(tmpdir, "cookies.txt")
+            with open(cookie_path, "w", encoding="utf-8") as f:
+                f.write(settings.ytdlp_cookies)
+            ydl_opts["cookiefile"] = cookie_path
+
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=True)
