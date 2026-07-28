@@ -401,7 +401,8 @@ def _build_note_text(tempo, sections, freq_map):
     )
 
 
-MAX_ANALYZE_SECONDS = 75  # 무료 서버 CPU로도 타임아웃 전에 끝나는 걸 확인한 안전한 상한
+MAX_ANALYZE_SECONDS = 30  # 무료 서버는 대기 상태에서 이미 메모리를 512MB 중 430MB+ 쓰고 있어서
+                          # 여유가 매우 적다 — 분석 구간을 짧게 잡아 메모리/시간을 모두 아낀다
 
 
 def analyze_audio(y, sr):
