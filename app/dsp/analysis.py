@@ -401,8 +401,8 @@ def _build_note_text(tempo, sections, freq_map):
     )
 
 
-MAX_ANALYZE_SECONDS = 30  # 무료 서버는 대기 상태에서 이미 메모리를 512MB 중 430MB+ 쓰고 있어서
-                          # 여유가 매우 적다 — 분석 구간을 짧게 잡아 메모리/시간을 모두 아낀다
+MAX_ANALYZE_SECONDS = 20  # 무료 서버는 대기 상태에서 이미 메모리를 512MB 중 430MB+ 쓰고 있어서
+                          # 여유가 매우 적다 (30초로도 96%까지 올라가 위험했음) — 더 짧게 잡는다
 
 
 def analyze_audio(y, sr):
