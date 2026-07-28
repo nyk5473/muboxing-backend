@@ -39,7 +39,7 @@ def _warmup_dsp():
 
         from .dsp.analysis import analyze_audio
 
-        sr = 22050
+        sr = 11025
         duration = 6
         t = np.linspace(0, duration, int(sr * duration), endpoint=False)
         y = (0.1 * np.sin(2 * np.pi * 440 * t)).astype(np.float32)

@@ -12,7 +12,7 @@ from ..deps import get_current_user_optional
 router = APIRouter(prefix="/ai", tags=["ai"])
 logger = logging.getLogger(__name__)
 
-SR = 22050
+SR = 11025  # Render 무료 티어 CPU가 느려서, 분석용으로는 절반 샘플레이트로 낮춰 처리 시간을 크게 줄인다
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
 

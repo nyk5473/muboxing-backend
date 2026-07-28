@@ -20,7 +20,7 @@ from fastapi import HTTPException
 from ..config import settings
 from .analysis import analyze_audio
 
-SR = 22050
+SR = 11025  # Render 무료 티어 CPU가 느려서, 분석용으로는 절반 샘플레이트로 낮춰 처리 시간을 크게 줄인다
 
 DSP_TRACK_TO_FRONTEND_INDEX = {
     "Drums": 0,   # beat

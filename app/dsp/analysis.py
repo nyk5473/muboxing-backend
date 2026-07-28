@@ -299,17 +299,20 @@ def _harmony_top_bottom(sections, chord_runs):
     return top, bottom
 
 
-def _band_energy_per_section(y, sr, sections):
-    n_fft, hop = 2048, 512
-    S = np.abs(librosa.stft(y, n_fft=n_fft, hop_length=hop)) ** 2
-    freqs = librosa.fft_frequencies(sr=sr, n_fft=n_fft)
-    frame_times = librosa.frames_to_time(np.arange(S.shape[1]), sr=sr, hop_length=hop)
+def _band_mask(freqs, lo, hi):
+    hi = hi if hi is not None else freqs[-1] + 1
+    return (freqs >= lo) & (freqs < hi)
 
-    nyquist = sr / 2
-    band_masks = {}
-    for name, (lo, hi) in BANDS.items():
-        hi = hi if hi is not None else nyquist
-        band_masks[name] = (freqs >= lo) & (freqs < hi)
+
+def _band_rms_from_stft(S_mag, mask):
+    if not np.any(mask):
+        return np.zeros(S_mag.shape[1])
+    return np.sqrt(np.mean(S_mag[mask] ** 2, axis=0))
+
+
+def _band_energy_per_section(S_mag, freqs, frame_times, sections):
+    S = S_mag ** 2
+    band_masks = {name: _band_mask(freqs, lo, hi) for name, (lo, hi) in BANDS.items()}
 
     raw = {name: [] for name in BANDS}
     for sec in sections:
@@ -335,26 +338,12 @@ def _band_energy_per_section(y, sr, sections):
     return freq_map
 
 
-def _band_rms_series(signal, sr, lo, hi, n_fft=2048, hop=512):
-    S = np.abs(librosa.stft(signal, n_fft=n_fft, hop_length=hop))
-    freqs = librosa.fft_frequencies(sr=sr, n_fft=n_fft)
-    hi = hi if hi is not None else sr / 2
-    mask = (freqs >= lo) & (freqs < hi)
-    if not np.any(mask):
-        return np.zeros(S.shape[1])
-    return np.sqrt(np.mean(S[mask] ** 2, axis=0))
-
-
-def _track_segments(y, y_harm, y_perc, sr, sections, chord_runs):
-    hop, n_fft = 512, 2048
-
+def _track_segments(S_y, S_harm, freqs, frame_times, y_perc, sr, sections, chord_runs, hop=512, n_fft=2048):
     drum_series = librosa.feature.rms(y=y_perc, frame_length=n_fft, hop_length=hop)[0]
-    bass_series = _band_rms_series(y, sr, *BANDS['low'])
-    chord_series = _band_rms_series(y_harm, sr, 250, 4000)
-    vocal_series = _band_rms_series(y_harm, sr, 200, 3400)
-    fx_series = _band_rms_series(y, sr, BANDS['high'][0], None)
-
-    frame_times = librosa.frames_to_time(np.arange(len(drum_series)), sr=sr, hop_length=hop)
+    bass_series = _band_rms_from_stft(S_y, _band_mask(freqs, *BANDS['low']))
+    fx_series = _band_rms_from_stft(S_y, _band_mask(freqs, BANDS['high'][0], None))
+    chord_series = _band_rms_from_stft(S_harm, _band_mask(freqs, 250, 4000))
+    vocal_series = _band_rms_from_stft(S_harm, _band_mask(freqs, 200, 3400))
 
     def section_level(series, sec):
         mask = (frame_times >= sec['start']) & (frame_times < sec['end'])
@@ -425,8 +414,17 @@ def analyze_audio(y, sr):
     sections = _finalize_sections(segments, labels, duration)
 
     chord_runs = _compute_chords(beat_chroma, beat_times, duration)
-    freq_map = _band_energy_per_section(y, sr, sections)
-    tracks = _track_segments(y, y_harm, y_perc, sr, sections, chord_runs)
+
+    # STFT는 계산 비용이 커서(무료 서버 CPU에서는 특히), y/y_harm 각각 한 번씩만 계산해
+    # 대역별 에너지·트랙 세그먼트 계산에 재사용한다 (예전엔 5번 따로 계산했었다).
+    hop, n_fft = 512, 2048
+    S_y = np.abs(librosa.stft(y, n_fft=n_fft, hop_length=hop))
+    S_harm = np.abs(librosa.stft(y_harm, n_fft=n_fft, hop_length=hop))
+    freqs = librosa.fft_frequencies(sr=sr, n_fft=n_fft)
+    frame_times = librosa.frames_to_time(np.arange(S_y.shape[1]), sr=sr, hop_length=hop)
+
+    freq_map = _band_energy_per_section(S_y, freqs, frame_times, sections)
+    tracks = _track_segments(S_y, S_harm, freqs, frame_times, y_perc, sr, sections, chord_runs, hop=hop, n_fft=n_fft)
     top, bottom = _harmony_top_bottom(sections, chord_runs)
     note_text = _build_note_text(tempo, sections, freq_map)
     quiz = _build_quiz(chord_runs, sections)
