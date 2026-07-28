@@ -401,11 +401,24 @@ def _build_note_text(tempo, sections, freq_map):
     )
 
 
+MAX_ANALYZE_SECONDS = 75  # 무료 서버 CPU로도 타임아웃 전에 끝나는 걸 확인한 안전한 상한
+
+
 def analyze_audio(y, sr):
     y = librosa.util.normalize(y.astype(np.float32))
-    duration = len(y) / sr
-    if duration < 5:
+    real_duration = len(y) / sr
+    if real_duration < 5:
         raise ValueError('오디오가 너무 짧아요 (5초 이상 필요).')
+
+    # 곡 전체를 분석하면 무료 서버 CPU에서는 시간이 너무 오래 걸려 요청이 타임아웃 나버린다.
+    # 앞부분(MAX_ANALYZE_SECONDS)만 정밀 분석하고, 결과 구간을 실제 곡 길이에 비례해서
+    # 늘려 채워서 전체 재생바를 덮도록 한다 (뒷부분은 근사치가 된다).
+    scale = 1.0
+    duration = real_duration
+    if real_duration > MAX_ANALYZE_SECONDS:
+        y = y[: int(MAX_ANALYZE_SECONDS * sr)]
+        duration = MAX_ANALYZE_SECONDS
+        scale = real_duration / MAX_ANALYZE_SECONDS
 
     y_harm, y_perc = librosa.effects.hpss(y)
 
@@ -429,8 +442,25 @@ def analyze_audio(y, sr):
     note_text = _build_note_text(tempo, sections, freq_map)
     quiz = _build_quiz(chord_runs, sections)
 
+    if scale != 1.0:
+        for s in sections:
+            s['start'] = int(round(s['start'] * scale))
+            s['end'] = int(round(s['end'] * scale))
+        sections[-1]['end'] = int(round(real_duration))
+        for t in tracks:
+            for seg in t['segs']:
+                seg['s'] = round(seg['s'] * scale, 2)
+                seg['e'] = round(seg['e'] * scale, 2)
+        for entry in (*top, *bottom):
+            entry['s'] = round(entry['s'] * scale, 2)
+            entry['e'] = round(entry['e'] * scale, 2)
+        for item in quiz:
+            item['s'] = round(item['s'] * scale, 2)
+            item['e'] = round(item['e'] * scale, 2)
+        freq_map = {sec['label']: freq_map.get(sec['label'], [0.3, 0.3, 0.3]) for sec in sections}
+
     return {
-        'duration': round(float(duration), 2),
+        'duration': round(float(real_duration), 2),
         'tempo': round(float(tempo), 1),
         'sections': [{'label': s['label'], 'start': s['start'], 'end': s['end']} for s in sections],
         'tracks': tracks,
