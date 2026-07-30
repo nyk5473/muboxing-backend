@@ -411,13 +411,17 @@ def analyze_audio(y, sr):
     if real_duration < 5:
         raise ValueError('오디오가 너무 짧아요 (5초 이상 필요).')
 
-    # 곡 전체를 분석하면 무료 서버 CPU에서는 시간이 너무 오래 걸려 요청이 타임아웃 나버린다.
-    # 앞부분(MAX_ANALYZE_SECONDS)만 정밀 분석하고, 결과 구간을 실제 곡 길이에 비례해서
-    # 늘려 채워서 전체 재생바를 덮도록 한다 (뒷부분은 근사치가 된다).
+    # 곡 전체를 분석하면 무료 서버 CPU/메모리로는 감당이 안 돼서 타임아웃/OOM이 난다.
+    # 그렇다고 맨 처음(MAX_ANALYZE_SECONDS)만 잘라서 보면, 인트로가 조용한 곡은 분석
+    # 구간 전체가 밋밋해서 늘렸을 때 곡 전체가 "가짜 샘플"처럼 보이는 문제가 있었다.
+    # 그래서 인트로를 건너뛰고 곡의 20% 지점(보통 벌스~코러스 근처)부터 잘라서 분석하고,
+    # 그 결과를 실제 곡 길이에 비례해서 늘려 채운다 (뒷부분은 근사치가 된다).
     scale = 1.0
     duration = real_duration
     if real_duration > MAX_ANALYZE_SECONDS:
-        y = y[: int(MAX_ANALYZE_SECONDS * sr)]
+        offset_seconds = max(0.0, min(real_duration * 0.2, real_duration - MAX_ANALYZE_SECONDS))
+        start_sample = int(offset_seconds * sr)
+        y = y[start_sample: start_sample + int(MAX_ANALYZE_SECONDS * sr)]
         duration = MAX_ANALYZE_SECONDS
         scale = real_duration / MAX_ANALYZE_SECONDS
 
