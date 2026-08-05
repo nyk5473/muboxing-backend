@@ -401,8 +401,7 @@ def _build_note_text(tempo, sections, freq_map):
     )
 
 
-MAX_ANALYZE_SECONDS = 20  # 무료 서버는 대기 상태에서 이미 메모리를 512MB 중 430MB+ 쓰고 있어서
-                          # 여유가 매우 적다 (30초로도 96%까지 올라가 위험했음) — 더 짧게 잡는다
+MAX_ANALYZE_SECONDS = 60  # STFT 해상도를 낮춰 메모리를 아낀 뒤 실측으로 정한 값 (app/dsp/analysis.py 참고)
 
 
 def analyze_audio(y, sr):
@@ -433,9 +432,11 @@ def analyze_audio(y, sr):
 
     chord_runs = _compute_chords(beat_chroma, beat_times, duration)
 
-    # STFT는 계산 비용이 커서(무료 서버 CPU에서는 특히), y/y_harm 각각 한 번씩만 계산해
+    # STFT는 계산 비용/메모리가 커서(무료 서버에서는 특히), y/y_harm 각각 한 번씩만 계산해
     # 대역별 에너지·트랙 세그먼트 계산에 재사용한다 (예전엔 5번 따로 계산했었다).
-    hop, n_fft = 512, 2048
+    # hop을 늘리고 n_fft를 줄이면 STFT 행렬 크기가 대략 4분의 1로 줄어, 그만큼 더 긴
+    # 구간을 분석할 메모리 여유가 생긴다 (시간 해상도는 조금 거칠어지지만 구조 추정에는 충분).
+    hop, n_fft = 1024, 1024
     S_y = np.abs(librosa.stft(y, n_fft=n_fft, hop_length=hop))
     S_harm = np.abs(librosa.stft(y_harm, n_fft=n_fft, hop_length=hop))
     freqs = librosa.fft_frequencies(sr=sr, n_fft=n_fft)
