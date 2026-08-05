@@ -401,7 +401,8 @@ def _build_note_text(tempo, sections, freq_map):
     )
 
 
-MAX_ANALYZE_SECONDS = 120  # STFT 해상도를 낮춰 메모리를 아낀 뒤 실측으로 정한 값
+MAX_ANALYZE_SECONDS = 90  # STFT 해상도를 낮춰 메모리를 아낀 뒤 실측으로 정한 값
+                          # (60초=445MB 안전, 120초=서버 다운 확인 → 그 사이로 설정)
 
 
 def analyze_audio(y, sr):
