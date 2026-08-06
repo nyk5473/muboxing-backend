@@ -401,8 +401,8 @@ def _build_note_text(tempo, sections, freq_map):
     )
 
 
-MAX_ANALYZE_SECONDS = 90  # STFT 해상도를 낮춰 메모리를 아낀 뒤 실측으로 정한 값
-                          # (60초=445MB 안전, 120초=서버 다운 확인 → 그 사이로 설정)
+MAX_ANALYZE_SECONDS = 60  # 실측 결과: 60초=445MB로 안전, 90초/120초는 반복적으로 서버 다운(OOM) 확인.
+                          # 이 값이 무료 서버(512MB)에서 안정적으로 확인된 상한이다.
 
 
 def analyze_audio(y, sr):
